@@ -121,10 +121,7 @@ const HomeScreen = ({ navigation }) => {
       const historyItem = {
         result: newResult,
         date: new Date().toISOString(),
-        coinType:
-          typeof selectedCoin === "object" && selectedCoin.value
-            ? selectedCoin.value
-            : "$1",
+        coinType: selectedCoin.value,
       };
 
       console.log("Guardando:", historyItem); // Para depuración
