@@ -13,6 +13,7 @@ const windowWidth = Dimensions.get("window").width;
 
 const HistoryScreen = () => {
   const [history, setHistory] = useState([]);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   useEffect(() => {
     loadHistory();
@@ -42,12 +43,21 @@ const HistoryScreen = () => {
     }
   };
 
+  const handleClearPress = () => {
+    if (history.length > 0) {
+      // Solo mostrar confirmación si hay historial
+      setShowConfirm(true);
+    }
+  };
+
   const clearHistory = async () => {
     try {
       await AsyncStorage.setItem("flipHistory", JSON.stringify([]));
       setHistory([]);
+      setShowConfirm(false); // Asegurarnos de cerrar el diálogo
     } catch (error) {
       console.error("Error clearing history:", error);
+      setShowConfirm(false); // Cerrar el diálogo incluso si hay error
     }
   };
 
@@ -103,8 +113,22 @@ const HistoryScreen = () => {
 
       <View style={styles.historyHeader}>
         <Text style={styles.historyTitle}>Historial de lanzamientos</Text>
-        <TouchableOpacity style={styles.clearButton} onPress={clearHistory}>
-          <Text style={styles.clearButtonText}>Limpiar</Text>
+        <TouchableOpacity
+          style={[
+            styles.clearButton,
+            history.length === 0 && styles.clearButtonDisabled, // Añadir estilo desactivado
+          ]}
+          onPress={handleClearPress}
+          disabled={history.length === 0} // Deshabilitar botón si no hay historial
+        >
+          <Text
+            style={[
+              styles.clearButtonText,
+              history.length === 0 && styles.clearButtonTextDisabled, // Texto más claro cuando está deshabilitado
+            ]}
+          >
+            Limpiar
+          </Text>
         </TouchableOpacity>
       </View>
 
@@ -127,6 +151,35 @@ const HistoryScreen = () => {
           </Text>
         )}
       </ScrollView>
+
+      {showConfirm && (
+        <View style={styles.confirmOverlay}>
+          <View style={styles.confirmDialog}>
+            <Text style={styles.confirmTitle}>¿Estás seguro?</Text>
+            <Text style={styles.confirmMessage}>
+              Esta acción eliminará todo el historial de lanzamientos
+            </Text>
+            <View style={styles.confirmButtons}>
+              <TouchableOpacity
+                style={[styles.confirmButton, styles.cancelButton]}
+                onPress={() => setShowConfirm(false)}
+              >
+                <Text style={styles.confirmButtonText}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.confirmButton, styles.deleteButton]}
+                onPress={clearHistory}
+              >
+                <Text
+                  style={[styles.confirmButtonText, styles.deleteButtonText]}
+                >
+                  Eliminar
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      )}
     </View>
   );
 };
@@ -253,6 +306,69 @@ const styles = StyleSheet.create({
     color: "#666",
     fontSize: 16,
     marginTop: 20,
+  },
+  confirmOverlay: {
+    position: "absolute",
+    top: 0,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 1000,
+  },
+  confirmDialog: {
+    backgroundColor: "white",
+    borderRadius: 12,
+    padding: 20,
+    width: "80%",
+    maxWidth: 300,
+    alignItems: "center",
+  },
+  confirmTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 10,
+    color: "#333",
+  },
+  confirmMessage: {
+    fontSize: 14,
+    color: "#666",
+    textAlign: "center",
+    marginBottom: 20,
+  },
+  confirmButtons: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    width: "100%",
+  },
+  confirmButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 20,
+    borderRadius: 6,
+    minWidth: 100,
+    alignItems: "center",
+  },
+  cancelButton: {
+    backgroundColor: "#f0f0f0",
+  },
+  deleteButton: {
+    backgroundColor: "#ff6b6b",
+  },
+  confirmButtonText: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  deleteButtonText: {
+    color: "white",
+  },
+  clearButtonDisabled: {
+    backgroundColor: "#ffb3b3", // Un rojo más claro
+    opacity: 0.5,
+  },
+  clearButtonTextDisabled: {
+    color: "rgba(255, 255, 255, 0.7)", // Texto más transparente
   },
 });
 
