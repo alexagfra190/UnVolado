@@ -42,6 +42,15 @@ const HistoryScreen = () => {
     }
   };
 
+  const clearHistory = async () => {
+    try {
+      await AsyncStorage.setItem("flipHistory", JSON.stringify([]));
+      setHistory([]);
+    } catch (error) {
+      console.error("Error clearing history:", error);
+    }
+  };
+
   const formatDate = (dateString) => {
     const options = {
       hour: "2-digit",
@@ -91,6 +100,14 @@ const HistoryScreen = () => {
           </View>
         </View>
       </View>
+
+      <View style={styles.historyHeader}>
+        <Text style={styles.historyTitle}>Historial de lanzamientos</Text>
+        <TouchableOpacity style={styles.clearButton} onPress={clearHistory}>
+          <Text style={styles.clearButtonText}>Limpiar</Text>
+        </TouchableOpacity>
+      </View>
+
       <ScrollView style={styles.historyList}>
         {history.length > 0 ? (
           history.map((flip, index) => (
