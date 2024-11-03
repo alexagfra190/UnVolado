@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   StyleSheet,
   View,
@@ -10,6 +10,7 @@ import {
   ScrollView,
   Image,
 } from "react-native";
+import { Audio } from "expo-av";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const windowHeight = Dimensions.get("window").height;
@@ -49,6 +50,9 @@ const COINS = [
 ];
 
 const HomeScreen = ({ navigation }) => {
+  const flipSoundRef = useRef(null); // Cambiamos a useRef en lugar de useState
+  const resultSoundRef = useRef(null);
+
   const [selectedCoin, setSelectedCoin] = useState(COINS[1]); // $1 peso por defecto
   const [result, setResult] = useState(null);
   const [isFlipping, setIsFlipping] = useState(false);
@@ -78,38 +82,122 @@ const HomeScreen = ({ navigation }) => {
     })
   ).current;
 
-  const flipCoin = () => {
-    setIsFlipping(true);
-    const newResult = Math.random() < 0.5 ? "Águila" : "Sol";
+  // Cargar los sonidos cuando el componente se monta
+  useEffect(() => {
+    console.log("Iniciando carga de sonidos...");
+    loadSounds();
+    return () => {
+      console.log("Limpiando sonidos...");
+      unloadSounds();
+    };
+  }, []);
 
-    // Secuencia de animación mejorada para mostrar ambas caras
-    Animated.sequence([
-      // Lanzamiento hacia arriba
-      Animated.timing(positionY, {
-        toValue: -windowHeight / 4,
-        duration: 500,
-        useNativeDriver: true,
-      }),
-      // Giros con cambios de cara
-      Animated.parallel([
-        Animated.timing(flipAnimation, {
-          toValue: 1,
-          duration: 1000,
-          useNativeDriver: true,
-        }),
+  const loadSounds = async () => {
+    try {
+      console.log("Cargando sonidos...");
+
+      const { sound: flip } = await Audio.Sound.createAsync(
+        require("../assets/sounds/flip.mp3")
+      );
+      console.log("Sonido de flip cargado");
+      flipSoundRef.current = flip;
+
+      const { sound: result } = await Audio.Sound.createAsync(
+        require("../assets/sounds/result.mp3")
+      );
+      console.log("Sonido de resultado cargado");
+      resultSoundRef.current = result;
+
+      console.log(
+        "Sonidos cargados exitosamente en refs:",
+        !!flipSoundRef.current,
+        !!resultSoundRef.current
+      );
+    } catch (error) {
+      console.error("Error cargando sonidos:", error);
+    }
+  };
+
+  const unloadSounds = async () => {
+    try {
+      if (flipSoundRef.current) {
+        await flipSoundRef.current.unloadAsync();
+      }
+      if (resultSoundRef.current) {
+        await resultSoundRef.current.unloadAsync();
+      }
+    } catch (error) {
+      console.error("Error descargando sonidos:", error);
+    }
+  };
+
+  const playFlipSound = async () => {
+    try {
+      console.log("Intentando reproducir sonido flip...");
+      if (flipSoundRef.current) {
+        await flipSoundRef.current.replayAsync();
+        console.log("Sonido flip reproducido");
+      } else {
+        console.log("Sonido flip no está cargado en ref");
+      }
+    } catch (error) {
+      console.error("Error reproduciendo flip:", error);
+    }
+  };
+
+  const playResultSound = async () => {
+    try {
+      console.log("Intentando reproducir sonido resultado...");
+      if (resultSoundRef.current) {
+        await resultSoundRef.current.replayAsync();
+        console.log("Sonido resultado reproducido");
+      } else {
+        console.log("Sonido resultado no está cargado en ref");
+      }
+    } catch (error) {
+      console.error("Error reproduciendo resultado:", error);
+    }
+  };
+
+  const flipCoin = async () => {
+    // Hacemos la función async
+    try {
+      setIsFlipping(true);
+      const newResult = Math.random() < 0.5 ? "Águila" : "Sol";
+
+      console.log("Iniciando lanzamiento, reproduciendo sonido...");
+      await playFlipSound();
+
+      Animated.sequence([
         Animated.timing(positionY, {
-          toValue: 0,
-          duration: 1000,
+          toValue: -windowHeight / 4,
+          duration: 500,
           useNativeDriver: true,
         }),
-      ]),
-    ]).start(() => {
-      setResult(newResult);
-      setIsFlipping(false);
-      flipAnimation.setValue(0);
-      setShowingAguilaFace(newResult === "Águila");
-      saveResult(newResult);
-    });
+        Animated.parallel([
+          Animated.timing(flipAnimation, {
+            toValue: 1,
+            duration: 1000,
+            useNativeDriver: true,
+          }),
+          Animated.timing(positionY, {
+            toValue: 0,
+            duration: 1000,
+            useNativeDriver: true,
+          }),
+        ]),
+      ]).start(async () => {
+        console.log("Animación terminada, reproduciendo sonido resultado...");
+        await playResultSound();
+        setResult(newResult);
+        setIsFlipping(false);
+        flipAnimation.setValue(0);
+        setShowingAguilaFace(newResult === "Águila");
+        saveResult(newResult);
+      });
+    } catch (error) {
+      console.error("Error en flipCoin:", error);
+    }
   };
 
   const saveResult = async (newResult) => {
