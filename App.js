@@ -1,16 +1,16 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { NavigationContainer } from "@react-navigation/native";
-import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import { View, Text } from "react-native";
-import { useEffect } from "react";
+import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { Audio } from "expo-av";
+import { Text } from "react-native";
 import HomeScreen from "./screens/HomeScreen";
 import HistoryScreen from "./screens/HistoryScreen";
-import { Audio } from "expo-av";
-const Stack = createNativeStackNavigator();
+import SettingsScreen from "./screens/SettingsScreen";
+
+const Tab = createBottomTabNavigator();
 
 export default function App() {
   useEffect(() => {
-    // Configurar audio
     const setupAudio = async () => {
       try {
         await Audio.setAudioModeAsync({
@@ -18,9 +18,7 @@ export default function App() {
           playsInSilentModeIOS: true,
           shouldDuckAndroid: true,
           playThroughEarpieceAndroid: false,
-          staysActiveInBackground: false,
         });
-        console.log("Audio configurado correctamente");
       } catch (error) {
         console.error("Error configurando audio:", error);
       }
@@ -28,32 +26,61 @@ export default function App() {
 
     setupAudio();
   }, []);
+
   return (
     <NavigationContainer>
-      <Stack.Navigator>
-        <Stack.Screen
+      <Tab.Navigator
+        screenOptions={{
+          tabBarActiveTintColor: "#2196F3",
+          tabBarInactiveTintColor: "#666",
+          headerStyle: {
+            backgroundColor: "#2196F3",
+          },
+          headerTintColor: "#fff",
+          tabBarStyle: {
+            paddingBottom: 5,
+            height: 60,
+          },
+          tabBarLabelStyle: {
+            fontSize: 12,
+            marginBottom: 3,
+          },
+        }}
+      >
+        <Tab.Screen
           name="Home"
           component={HomeScreen}
           options={{
             title: "¿Un Volado?",
-            headerStyle: {
-              backgroundColor: "#2196F3",
-            },
-            headerTintColor: "#fff",
+            tabBarLabel: "Lanzar",
+            tabBarIcon: ({ color }) => (
+              <Text style={{ fontSize: 24, color }}>🎲</Text>
+            ),
           }}
         />
-        <Stack.Screen
+        <Tab.Screen
           name="History"
           component={HistoryScreen}
           options={{
             title: "Historial",
-            headerStyle: {
-              backgroundColor: "#2196F3",
-            },
-            headerTintColor: "#fff",
+            tabBarLabel: "Historial",
+            tabBarIcon: ({ color }) => (
+              <Text style={{ fontSize: 24, color }}>📊</Text>
+            ),
           }}
         />
-      </Stack.Navigator>
+        <Tab.Screen
+          name="Settings"
+          component={SettingsScreen}
+          options={{
+            title: "Ajustes",
+            tabBarLabel: "Ajustes",
+            tabBarIcon: ({ color }) => (
+              <Text style={{ fontSize: 24, color }}>⚙️</Text>
+            ),
+          }}
+        />
+      </Tab.Navigator>
     </NavigationContainer>
   );
 }

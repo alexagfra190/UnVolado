@@ -57,7 +57,10 @@ const HomeScreen = ({ navigation }) => {
   const [result, setResult] = useState(null);
   const [isFlipping, setIsFlipping] = useState(false);
   const [showingAguilaFace, setShowingAguilaFace] = useState(false);
-
+  const [soundSettings, setSoundSettings] = useState({
+    flip: true,
+    result: true,
+  });
   const flipAnimation = useRef(new Animated.Value(0)).current;
   const positionY = useRef(new Animated.Value(0)).current;
 
@@ -92,6 +95,21 @@ const HomeScreen = ({ navigation }) => {
     };
   }, []);
 
+  // Agrega el useEffect para cargar la configuración
+  useEffect(() => {
+    loadSoundSettings();
+  }, []);
+
+  const loadSoundSettings = async () => {
+    try {
+      const settings = await AsyncStorage.getItem("soundSettings");
+      if (settings) {
+        setSoundSettings(JSON.parse(settings));
+      }
+    } catch (error) {
+      console.error("Error loading sound settings:", error);
+    }
+  };
   const loadSounds = async () => {
     try {
       console.log("Cargando sonidos...");
@@ -132,30 +150,14 @@ const HomeScreen = ({ navigation }) => {
   };
 
   const playFlipSound = async () => {
-    try {
-      console.log("Intentando reproducir sonido flip...");
-      if (flipSoundRef.current) {
-        await flipSoundRef.current.replayAsync();
-        console.log("Sonido flip reproducido");
-      } else {
-        console.log("Sonido flip no está cargado en ref");
-      }
-    } catch (error) {
-      console.error("Error reproduciendo flip:", error);
+    if (soundSettings.flip && flipSoundRef.current) {
+      await flipSoundRef.current.replayAsync();
     }
   };
 
   const playResultSound = async () => {
-    try {
-      console.log("Intentando reproducir sonido resultado...");
-      if (resultSoundRef.current) {
-        await resultSoundRef.current.replayAsync();
-        console.log("Sonido resultado reproducido");
-      } else {
-        console.log("Sonido resultado no está cargado en ref");
-      }
-    } catch (error) {
-      console.error("Error reproduciendo resultado:", error);
+    if (soundSettings.result && resultSoundRef.current) {
+      await resultSoundRef.current.replayAsync();
     }
   };
 
@@ -236,7 +238,14 @@ const HomeScreen = ({ navigation }) => {
     inputRange: [0, 0.5, 1],
     outputRange: [0, 1, 0],
   });
+  // Agrega un listener para cuando la pantalla reciba foco
+  useEffect(() => {
+    const unsubscribe = navigation.addListener("focus", () => {
+      loadSoundSettings();
+    });
 
+    return unsubscribe;
+  }, [navigation]);
   return (
     <View style={styles.container}>
       <Text style={styles.instructions}>
@@ -315,13 +324,6 @@ const HomeScreen = ({ navigation }) => {
           <Text style={styles.resultText}>{result}</Text>
         </View>
       )}
-
-      <TouchableOpacity
-        style={styles.historyButton}
-        onPress={() => navigation.navigate("History")}
-      >
-        <Text style={styles.historyButtonText}>Ver Historial</Text>
-      </TouchableOpacity>
     </View>
   );
 };
@@ -412,18 +414,6 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: "bold",
     color: "#333",
-  },
-  historyButton: {
-    backgroundColor: "#2196F3",
-    paddingHorizontal: 30,
-    paddingVertical: 15,
-    borderRadius: 25,
-    elevation: 3,
-  },
-  historyButtonText: {
-    color: "white",
-    fontSize: 16,
-    fontWeight: "600",
   },
 });
 
