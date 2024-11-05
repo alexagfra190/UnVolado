@@ -1,60 +1,73 @@
 import React, { useState, useEffect } from "react";
-import { StyleSheet, View, Text, Switch, TouchableOpacity } from "react-native";
+import { StyleSheet, View, Text, Switch } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const SettingsScreen = () => {
-  const [soundSettings, setSoundSettings] = useState({
-    flip: true,
-    result: true,
-  });
+  const [flipSound, setFlipSound] = useState(true);
+  const [resultSound, setResultSound] = useState(true);
 
   useEffect(() => {
-    loadSettings();
+    const loadCurrentSettings = async () => {
+      try {
+        const settings = await AsyncStorage.getItem("soundSettings");
+        if (settings) {
+          const parsedSettings = JSON.parse(settings);
+          console.log(
+            "Settings - Configuración actual cargada:",
+            parsedSettings
+          );
+          setFlipSound(parsedSettings.flip);
+          setResultSound(parsedSettings.result);
+        }
+      } catch (error) {
+        console.error("Error loading settings:", error);
+      }
+    };
+
+    loadCurrentSettings();
   }, []);
 
   const loadSettings = async () => {
     try {
       const settings = await AsyncStorage.getItem("soundSettings");
       if (settings) {
-        setSoundSettings(JSON.parse(settings));
+        const parsedSettings = JSON.parse(settings);
+        console.log("Configuración cargada:", parsedSettings);
+        setFlipSound(parsedSettings.flip);
+        setResultSound(parsedSettings.result);
       }
     } catch (error) {
       console.error("Error loading settings:", error);
     }
   };
 
-  const saveSettings = async (newSettings) => {
+  const saveSoundSettings = async (flip, result) => {
     try {
+      const newSettings = { flip, result };
+      console.log("Settings - Guardando nueva configuración:", newSettings);
       await AsyncStorage.setItem("soundSettings", JSON.stringify(newSettings));
-      setSoundSettings(newSettings);
+      console.log("Settings - Configuración guardada exitosamente");
     } catch (error) {
       console.error("Error saving settings:", error);
     }
   };
 
-  const toggleFlipSound = () => {
-    const newSettings = {
-      ...soundSettings,
-      flip: !soundSettings.flip,
-    };
-    saveSettings(newSettings);
+  const toggleFlipSound = async (value) => {
+    console.log("Settings - Cambiando sonido de flip a:", value);
+    setFlipSound(value);
+    await saveSoundSettings(value, resultSound);
   };
 
-  const toggleResultSound = () => {
-    const newSettings = {
-      ...soundSettings,
-      result: !soundSettings.result,
-    };
-    saveSettings(newSettings);
+  const toggleResultSound = async (value) => {
+    console.log("Settings - Cambiando sonido de resultado a:", value);
+    setResultSound(value);
+    await saveSoundSettings(flipSound, value);
   };
 
-  const toggleAllSounds = () => {
-    const newValue = !(soundSettings.flip && soundSettings.result);
-    const newSettings = {
-      flip: newValue,
-      result: newValue,
-    };
-    saveSettings(newSettings);
+  const toggleAllSounds = async (value) => {
+    setFlipSound(value);
+    setResultSound(value);
+    await saveSoundSettings(value, value);
   };
 
   return (
@@ -65,32 +78,30 @@ const SettingsScreen = () => {
         <View style={styles.optionContainer}>
           <Text style={styles.optionText}>Sonido de Lanzamiento</Text>
           <Switch
-            value={soundSettings.flip}
+            value={flipSound}
             onValueChange={toggleFlipSound}
             trackColor={{ false: "#767577", true: "#81b0ff" }}
-            thumbColor={soundSettings.flip ? "#2196F3" : "#f4f3f4"}
+            thumbColor={flipSound ? "#2196F3" : "#f4f3f4"}
           />
         </View>
 
         <View style={styles.optionContainer}>
           <Text style={styles.optionText}>Sonido de Resultado</Text>
           <Switch
-            value={soundSettings.result}
+            value={resultSound}
             onValueChange={toggleResultSound}
             trackColor={{ false: "#767577", true: "#81b0ff" }}
-            thumbColor={soundSettings.result ? "#2196F3" : "#f4f3f4"}
+            thumbColor={resultSound ? "#2196F3" : "#f4f3f4"}
           />
         </View>
 
         <View style={[styles.optionContainer, styles.separator]}>
           <Text style={styles.optionText}>Todos los Sonidos</Text>
           <Switch
-            value={soundSettings.flip && soundSettings.result}
+            value={flipSound && resultSound}
             onValueChange={toggleAllSounds}
             trackColor={{ false: "#767577", true: "#81b0ff" }}
-            thumbColor={
-              soundSettings.flip && soundSettings.result ? "#2196F3" : "#f4f3f4"
-            }
+            thumbColor={flipSound && resultSound ? "#2196F3" : "#f4f3f4"}
           />
         </View>
       </View>

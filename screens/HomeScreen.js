@@ -15,7 +15,6 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const windowHeight = Dimensions.get("window").height;
 
-// Definición de las monedas disponibles con ambas caras
 const COINS = [
   {
     id: "50c",
@@ -50,10 +49,7 @@ const COINS = [
 ];
 
 const HomeScreen = ({ navigation }) => {
-  const flipSoundRef = useRef(null); // Cambiamos a useRef en lugar de useState
-  const resultSoundRef = useRef(null);
-
-  const [selectedCoin, setSelectedCoin] = useState(COINS[1]); // $1 peso por defecto
+  const [selectedCoin, setSelectedCoin] = useState(COINS[1]);
   const [result, setResult] = useState(null);
   const [isFlipping, setIsFlipping] = useState(false);
   const [showingAguilaFace, setShowingAguilaFace] = useState(false);
@@ -61,8 +57,77 @@ const HomeScreen = ({ navigation }) => {
     flip: true,
     result: true,
   });
+
   const flipAnimation = useRef(new Animated.Value(0)).current;
   const positionY = useRef(new Animated.Value(0)).current;
+  const flipSoundRef = useRef(null);
+  const resultSoundRef = useRef(null);
+
+  useEffect(() => {
+    loadSounds();
+    loadSoundSettings();
+
+    const initializeScreen = async () => {
+      await loadSounds();
+      await loadSoundSettings();
+    };
+
+    initializeScreen();
+
+    // Suscribirse al evento focus
+    const unsubscribe = navigation.addListener("focus", async () => {
+      console.log("HomeScreen recibió foco, recargando configuración...");
+      // Recargar configuración cuando la pantalla recibe foco
+      await loadSoundSettings();
+    });
+    return () => {
+      unloadSounds();
+      unsubscribe();
+    };
+  }, [navigation]);
+
+  const loadSoundSettings = async () => {
+    try {
+      const settings = await AsyncStorage.getItem("soundSettings");
+      if (settings) {
+        const parsedSettings = JSON.parse(settings);
+        console.log("Cargando configuración:", parsedSettings);
+        setSoundSettings(parsedSettings);
+        return parsedSettings; // Retornamos la configuración
+      }
+      return soundSettings; // Retornamos el estado actual si no hay configuración guardada
+    } catch (error) {
+      console.error("Error loading sound settings:", error);
+      return soundSettings; // Retornamos el estado actual en caso de error
+    }
+  };
+
+  const loadSounds = async () => {
+    try {
+      const { sound: flip } = await Audio.Sound.createAsync(
+        require("../assets/sounds/flip.mp3")
+      );
+      flipSoundRef.current = flip;
+
+      const { sound: result } = await Audio.Sound.createAsync(
+        require("../assets/sounds/result.mp3")
+      );
+      resultSoundRef.current = result;
+
+      console.log("Sonidos cargados exitosamente");
+    } catch (error) {
+      console.error("Error cargando sonidos:", error);
+    }
+  };
+
+  const unloadSounds = async () => {
+    try {
+      if (flipSoundRef.current) await flipSoundRef.current.unloadAsync();
+      if (resultSoundRef.current) await resultSoundRef.current.unloadAsync();
+    } catch (error) {
+      console.error("Error descargando sonidos:", error);
+    }
+  };
 
   const panResponder = useRef(
     PanResponder.create({
@@ -85,137 +150,96 @@ const HomeScreen = ({ navigation }) => {
     })
   ).current;
 
-  // Cargar los sonidos cuando el componente se monta
-  useEffect(() => {
-    console.log("Iniciando carga de sonidos...");
-    loadSounds();
-    return () => {
-      console.log("Limpiando sonidos...");
-      unloadSounds();
-    };
-  }, []);
-
-  // Agrega el useEffect para cargar la configuración
-  useEffect(() => {
-    loadSoundSettings();
-  }, []);
-
-  const loadSoundSettings = async () => {
-    try {
-      const settings = await AsyncStorage.getItem("soundSettings");
-      if (settings) {
-        setSoundSettings(JSON.parse(settings));
-      }
-    } catch (error) {
-      console.error("Error loading sound settings:", error);
-    }
-  };
-  const loadSounds = async () => {
-    try {
-      console.log("Cargando sonidos...");
-
-      const { sound: flip } = await Audio.Sound.createAsync(
-        require("../assets/sounds/flip.mp3")
-      );
-      console.log("Sonido de flip cargado");
-      flipSoundRef.current = flip;
-
-      const { sound: result } = await Audio.Sound.createAsync(
-        require("../assets/sounds/result.mp3")
-      );
-      console.log("Sonido de resultado cargado");
-      resultSoundRef.current = result;
-
-      console.log(
-        "Sonidos cargados exitosamente en refs:",
-        !!flipSoundRef.current,
-        !!resultSoundRef.current
-      );
-    } catch (error) {
-      console.error("Error cargando sonidos:", error);
-    }
-  };
-
-  const unloadSounds = async () => {
-    try {
-      if (flipSoundRef.current) {
-        await flipSoundRef.current.unloadAsync();
-      }
-      if (resultSoundRef.current) {
-        await resultSoundRef.current.unloadAsync();
-      }
-    } catch (error) {
-      console.error("Error descargando sonidos:", error);
-    }
-  };
-
   const playFlipSound = async () => {
-    if (soundSettings.flip && flipSoundRef.current) {
-      await flipSoundRef.current.replayAsync();
+    try {
+      // Leer directamente de AsyncStorage
+      const settings = await AsyncStorage.getItem("soundSettings");
+      const soundConfig = settings
+        ? JSON.parse(settings)
+        : { flip: true, result: true };
+
+      console.log("Config actual flip:", soundConfig);
+
+      if (!soundConfig.flip) {
+        console.log("Sonido flip desactivado");
+        return;
+      }
+
+      if (flipSoundRef.current) {
+        await flipSoundRef.current.replayAsync();
+      }
+    } catch (error) {
+      console.error("Error en playFlipSound:", error);
     }
   };
 
   const playResultSound = async () => {
-    if (soundSettings.result && resultSoundRef.current) {
-      await resultSoundRef.current.replayAsync();
+    try {
+      // Leer directamente de AsyncStorage
+      const settings = await AsyncStorage.getItem("soundSettings");
+      const soundConfig = settings
+        ? JSON.parse(settings)
+        : { flip: true, result: true };
+
+      console.log("Config actual result:", soundConfig);
+
+      if (!soundConfig.result) {
+        console.log("Sonido resultado desactivado");
+        return;
+      }
+
+      if (resultSoundRef.current) {
+        await resultSoundRef.current.replayAsync();
+      }
+    } catch (error) {
+      console.error("Error en playResultSound:", error);
     }
   };
 
-  const flipCoin = async () => {
-    // Hacemos la función async
-    try {
-      setIsFlipping(true);
-      const newResult = Math.random() < 0.5 ? "Águila" : "Sol";
+  const flipCoin = () => {
+    setIsFlipping(true);
+    const newResult = Math.random() < 0.5 ? "Águila" : "Sol";
 
-      console.log("Iniciando lanzamiento, reproduciendo sonido...");
-      await playFlipSound();
+    // Primera animación y sonido
+    playFlipSound();
 
-      Animated.sequence([
-        Animated.timing(positionY, {
-          toValue: -windowHeight / 4,
-          duration: 500,
+    Animated.sequence([
+      Animated.timing(positionY, {
+        toValue: -windowHeight / 4,
+        duration: 500,
+        useNativeDriver: true,
+      }),
+      Animated.parallel([
+        Animated.timing(flipAnimation, {
+          toValue: 1,
+          duration: 1000,
           useNativeDriver: true,
         }),
-        Animated.parallel([
-          Animated.timing(flipAnimation, {
-            toValue: 1,
-            duration: 1000,
-            useNativeDriver: true,
-          }),
-          Animated.timing(positionY, {
-            toValue: 0,
-            duration: 1000,
-            useNativeDriver: true,
-          }),
-        ]),
-      ]).start(async () => {
-        console.log("Animación terminada, reproduciendo sonido resultado...");
-        await playResultSound();
-        setResult(newResult);
-        setIsFlipping(false);
-        flipAnimation.setValue(0);
-        setShowingAguilaFace(newResult === "Águila");
-        saveResult(newResult);
-      });
-    } catch (error) {
-      console.error("Error en flipCoin:", error);
-    }
+        Animated.timing(positionY, {
+          toValue: 0,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+      ]),
+    ]).start(() => {
+      playResultSound();
+      setResult(newResult);
+      setIsFlipping(false);
+      flipAnimation.setValue(0);
+      setShowingAguilaFace(newResult === "Águila");
+      saveResult(newResult);
+    });
   };
 
   const saveResult = async (newResult) => {
     try {
       const history = await AsyncStorage.getItem("flipHistory");
       const parsedHistory = history ? JSON.parse(history) : [];
-
-      // Asegurarnos de solo guardar los datos necesarios
       const historyItem = {
         result: newResult,
         date: new Date().toISOString(),
         coinType: selectedCoin.value,
       };
-
-      console.log("Guardando:", historyItem); // Para depuración
-
       const updatedHistory = [...parsedHistory, historyItem];
       await AsyncStorage.setItem("flipHistory", JSON.stringify(updatedHistory));
     } catch (error) {
@@ -228,7 +252,6 @@ const HomeScreen = ({ navigation }) => {
     outputRange: ["0deg", "180deg", "360deg", "540deg", "720deg"],
   });
 
-  // Interpolación para la opacidad de cada cara
   const solOpacity = flipAnimation.interpolate({
     inputRange: [0, 0.5, 1],
     outputRange: [1, 0, 1],
@@ -238,14 +261,7 @@ const HomeScreen = ({ navigation }) => {
     inputRange: [0, 0.5, 1],
     outputRange: [0, 1, 0],
   });
-  // Agrega un listener para cuando la pantalla reciba foco
-  useEffect(() => {
-    const unsubscribe = navigation.addListener("focus", () => {
-      loadSoundSettings();
-    });
 
-    return unsubscribe;
-  }, [navigation]);
   return (
     <View style={styles.container}>
       <Text style={styles.instructions}>
@@ -286,7 +302,6 @@ const HomeScreen = ({ navigation }) => {
           ]}
           {...panResponder.panHandlers}
         >
-          {/* Cara Sol */}
           <Animated.View
             style={[
               styles.coinFace,
@@ -300,7 +315,6 @@ const HomeScreen = ({ navigation }) => {
             />
           </Animated.View>
 
-          {/* Cara Águila */}
           <Animated.View
             style={[
               styles.coinFace,
