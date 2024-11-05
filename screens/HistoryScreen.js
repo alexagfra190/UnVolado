@@ -11,35 +11,54 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const windowWidth = Dimensions.get("window").width;
 
-const HistoryScreen = () => {
+const HistoryScreen = ({ navigation }) => {
   const [history, setHistory] = useState([]);
   const [showConfirm, setShowConfirm] = useState(false);
 
+  // En HistoryScreen.js
   useEffect(() => {
-    loadHistory();
-  }, []);
+    loadHistory(); // Carga inicial
+
+    const unsubscribe = navigation.addListener("focus", () => {
+      console.log("HistoryScreen recibió foco, recargando historial...");
+      loadHistory();
+    });
+
+    return unsubscribe;
+  }, [navigation]);
 
   const loadHistory = async () => {
     try {
       const savedHistory = await AsyncStorage.getItem("flipHistory");
       if (savedHistory) {
         const parsedHistory = JSON.parse(savedHistory);
-        // Agregar log para ver qué datos están llegando
-        console.log("Datos cargados:", JSON.stringify(parsedHistory, null, 2));
+        console.log("Historial cargado - datos brutos:", parsedHistory);
 
-        // Limpiar los datos antes de guardarlos en el estado
-        const cleanHistory = parsedHistory.map((item) => ({
-          ...item,
-          coinType:
-            typeof item.coinType === "object"
-              ? item.coinType.value
-              : item.coinType,
-        }));
+        if (!Array.isArray(parsedHistory)) {
+          console.log("El historial no es un array, inicializando vacío");
+          setHistory([]);
+          return;
+        }
 
+        // Asegurarnos de que cada item tenga la estructura correcta
+        const cleanHistory = parsedHistory.map((item) => {
+          console.log("Procesando item:", item);
+          return {
+            result: item.result || "N/A",
+            date: item.date || new Date().toISOString(),
+            coinType: item.coinType || "N/A",
+          };
+        });
+
+        console.log("Historial procesado:", cleanHistory);
         setHistory(cleanHistory.reverse());
+      } else {
+        console.log("No hay historial guardado");
+        setHistory([]);
       }
     } catch (error) {
       console.error("Error loading history:", error);
+      setHistory([]);
     }
   };
 

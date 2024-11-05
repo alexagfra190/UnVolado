@@ -49,6 +49,7 @@ const COINS = [
 ];
 
 const HomeScreen = ({ navigation }) => {
+  const selectedCoinRef = useRef(COINS[1]); // Usamos useRef para la moneda seleccionada
   const [selectedCoin, setSelectedCoin] = useState(COINS[1]);
   const [result, setResult] = useState(null);
   const [isFlipping, setIsFlipping] = useState(false);
@@ -76,7 +77,6 @@ const HomeScreen = ({ navigation }) => {
 
     // Suscribirse al evento focus
     const unsubscribe = navigation.addListener("focus", async () => {
-      console.log("HomeScreen recibió foco, recargando configuración...");
       // Recargar configuración cuando la pantalla recibe foco
       await loadSoundSettings();
     });
@@ -91,7 +91,7 @@ const HomeScreen = ({ navigation }) => {
       const settings = await AsyncStorage.getItem("soundSettings");
       if (settings) {
         const parsedSettings = JSON.parse(settings);
-        console.log("Cargando configuración:", parsedSettings);
+        // console.log("Cargando configuración:", parsedSettings);
         setSoundSettings(parsedSettings);
         return parsedSettings; // Retornamos la configuración
       }
@@ -114,7 +114,7 @@ const HomeScreen = ({ navigation }) => {
       );
       resultSoundRef.current = result;
 
-      console.log("Sonidos cargados exitosamente");
+      // console.log("Sonidos cargados exitosamente");
     } catch (error) {
       console.error("Error cargando sonidos:", error);
     }
@@ -158,10 +158,10 @@ const HomeScreen = ({ navigation }) => {
         ? JSON.parse(settings)
         : { flip: true, result: true };
 
-      console.log("Config actual flip:", soundConfig);
+      // console.log("Config actual flip:", soundConfig);
 
       if (!soundConfig.flip) {
-        console.log("Sonido flip desactivado");
+        // console.log("Sonido flip desactivado");
         return;
       }
 
@@ -181,10 +181,10 @@ const HomeScreen = ({ navigation }) => {
         ? JSON.parse(settings)
         : { flip: true, result: true };
 
-      console.log("Config actual result:", soundConfig);
+      // console.log("Config actual result:", soundConfig);
 
       if (!soundConfig.result) {
-        console.log("Sonido resultado desactivado");
+        // console.log("Sonido resultado desactivado");
         return;
       }
 
@@ -197,9 +197,12 @@ const HomeScreen = ({ navigation }) => {
   };
 
   const flipCoin = () => {
-    setIsFlipping(true);
     const newResult = Math.random() < 0.5 ? "Águila" : "Sol";
+    console.log("Resultado generado:", newResult); // Para depuración
 
+    setIsFlipping(true);
+    // Asegurar que la cara inicial sea la correcta
+    setShowingAguilaFace(false);
     // Primera animación y sonido
     playFlipSound();
 
@@ -222,26 +225,53 @@ const HomeScreen = ({ navigation }) => {
         }),
       ]),
     ]).start(() => {
+      // Al terminar la animación, establecer la cara correcta
+      setShowingAguilaFace(newResult === "Águila");
+      console.log("Mostrando cara:", newResult === "Águila" ? "Águila" : "Sol"); // Para depuración
+
       playResultSound();
       setResult(newResult);
       setIsFlipping(false);
       flipAnimation.setValue(0);
-      setShowingAguilaFace(newResult === "Águila");
       saveResult(newResult);
     });
   };
 
+  const handleCoinSelection = (coin) => {
+    console.log("Seleccionando moneda:", coin);
+    selectedCoinRef.current = coin; // Actualizamos la referencia
+    setSelectedCoin(coin);
+  };
+
   const saveResult = async (newResult) => {
     try {
-      const history = await AsyncStorage.getItem("flipHistory");
-      const parsedHistory = history ? JSON.parse(history) : [];
+      const currentCoin = selectedCoinRef.current;
+      console.log("Moneda actual al guardar:", currentCoin);
+
+      // Primero leemos el historial existente
+      let currentHistory = [];
+      const savedHistory = await AsyncStorage.getItem("flipHistory");
+      if (savedHistory) {
+        currentHistory = JSON.parse(savedHistory);
+        // console.log("Historial existente:", currentHistory);
+      }
+
+      // Creamos el nuevo item
       const historyItem = {
         result: newResult,
         date: new Date().toISOString(),
-        coinType: selectedCoin.value,
+        coinType: currentCoin.value,
       };
-      const updatedHistory = [...parsedHistory, historyItem];
+
+      console.log("Nuevo item para historial:", historyItem);
+
+      // Agregamos el nuevo item al historial
+      const updatedHistory = [...currentHistory, historyItem];
+      // console.log("Historial actualizado:", updatedHistory);
+
+      // Guardamos el historial actualizado
       await AsyncStorage.setItem("flipHistory", JSON.stringify(updatedHistory));
+      console.log("Historial guardado exitosamente");
     } catch (error) {
       console.error("Error saving result:", error);
     }
@@ -280,7 +310,7 @@ const HomeScreen = ({ navigation }) => {
               styles.coinOption,
               selectedCoin.id === coin.id && styles.selectedCoinOption,
             ]}
-            onPress={() => setSelectedCoin(coin)}
+            onPress={() => handleCoinSelection(coin)}
           >
             <Image
               source={coin.solImage}
@@ -305,7 +335,9 @@ const HomeScreen = ({ navigation }) => {
           <Animated.View
             style={[
               styles.coinFace,
-              { opacity: isFlipping ? solOpacity : !showingAguilaFace ? 1 : 0 },
+              {
+                opacity: isFlipping ? solOpacity : !showingAguilaFace ? 1 : 0,
+              },
             ]}
           >
             <Image
