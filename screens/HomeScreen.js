@@ -86,6 +86,11 @@ const HomeScreen = ({ navigation }) => {
     };
   }, [navigation]);
 
+  useEffect(() => {
+    console.log("showingAguilaFace cambió a:", showingAguilaFace);
+    console.log("Resultado actual:", result);
+  }, [showingAguilaFace, result]);
+
   const loadSoundSettings = async () => {
     try {
       const settings = await AsyncStorage.getItem("soundSettings");
@@ -198,13 +203,32 @@ const HomeScreen = ({ navigation }) => {
 
   const flipCoin = () => {
     const newResult = Math.random() < 0.5 ? "Águila" : "Sol";
-    console.log("Resultado generado:", newResult); // Para depuración
+    console.log("------------------------");
+    console.log("INICIO DE LANZAMIENTO");
+    console.log("Resultado generado:", newResult);
 
     setIsFlipping(true);
     // Asegurar que la cara inicial sea la correcta
     setShowingAguilaFace(false);
     // Primera animación y sonido
     playFlipSound();
+
+    const finishFlip = () => {
+      // Usamos una función para asegurar que los estados se actualicen juntos
+      const updates = () => {
+        setIsFlipping(false);
+        setShowingAguilaFace(newResult === "Águila");
+        setResult(newResult);
+      };
+
+      // if (soundSettings.result) {
+      playResultSound();
+      // }
+
+      flipAnimation.setValue(0);
+      updates();
+      saveResult(newResult);
+    };
 
     Animated.sequence([
       Animated.timing(positionY, {
@@ -224,17 +248,7 @@ const HomeScreen = ({ navigation }) => {
           useNativeDriver: true,
         }),
       ]),
-    ]).start(() => {
-      // Al terminar la animación, establecer la cara correcta
-      setShowingAguilaFace(newResult === "Águila");
-      console.log("Mostrando cara:", newResult === "Águila" ? "Águila" : "Sol"); // Para depuración
-
-      playResultSound();
-      setResult(newResult);
-      setIsFlipping(false);
-      flipAnimation.setValue(0);
-      saveResult(newResult);
-    });
+    ]).start(finishFlip);
   };
 
   const handleCoinSelection = (coin) => {
@@ -246,7 +260,7 @@ const HomeScreen = ({ navigation }) => {
   const saveResult = async (newResult) => {
     try {
       const currentCoin = selectedCoinRef.current;
-      console.log("Moneda actual al guardar:", currentCoin);
+      // console.log("Moneda actual al guardar:", currentCoin);
 
       // Primero leemos el historial existente
       let currentHistory = [];
@@ -263,7 +277,7 @@ const HomeScreen = ({ navigation }) => {
         coinType: currentCoin.value,
       };
 
-      console.log("Nuevo item para historial:", historyItem);
+      // console.log("Nuevo item para historial:", historyItem);
 
       // Agregamos el nuevo item al historial
       const updatedHistory = [...currentHistory, historyItem];
@@ -271,7 +285,7 @@ const HomeScreen = ({ navigation }) => {
 
       // Guardamos el historial actualizado
       await AsyncStorage.setItem("flipHistory", JSON.stringify(updatedHistory));
-      console.log("Historial guardado exitosamente");
+      // console.log("Historial guardado exitosamente");
     } catch (error) {
       console.error("Error saving result:", error);
     }
@@ -337,6 +351,7 @@ const HomeScreen = ({ navigation }) => {
               styles.coinFace,
               {
                 opacity: isFlipping ? solOpacity : !showingAguilaFace ? 1 : 0,
+                display: isFlipping || !showingAguilaFace ? "flex" : "none",
               },
             ]}
           >
@@ -353,6 +368,7 @@ const HomeScreen = ({ navigation }) => {
               styles.coinFaceBack,
               {
                 opacity: isFlipping ? aguilaOpacity : showingAguilaFace ? 1 : 0,
+                display: isFlipping || showingAguilaFace ? "flex" : "none",
               },
             ]}
           >
